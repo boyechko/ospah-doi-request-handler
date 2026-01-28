@@ -1,39 +1,69 @@
-# DOI Request Email to DataCite XML Converter
+# DOI Request Handler (Email → DataCite XML)
 
-This script parses email messages from the DOI Request Form and generates DataCite metadata XML files that can be imported into DataCite's Fabrica.
+Small command-line utility that parses `.eml` messages from a DOI request form (HTML body) and produces a DataCite Kernel-4 metadata XML file suitable for import into DataCite Fabrica.
 
-## Setup
+## Requirements
 
-Install dependencies:
+- Python 3.8+
+- Dependencies: `lxml`, `requests` (see `requirements.txt`)
+
+## Quick start
+
+Create a virtualenv and install dependencies:
+
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Usage
+Run the converter:
 
 ```bash
-python src/main.py <email_file.eml>
+python src/main.py path/to/request.eml
 ```
 
-The output XML file will be saved in the `output/` directory with a filename based on the input file name.
+This writes `path/to/request.xml` (same directory as the input `.eml`).
 
-## What it does
+## What gets extracted
 
-The script:
-1. Parses the .eml email file
-2. Extracts form data from the HTML body including:
-   - Creator(s)
-   - Title
-   - Publisher
-   - Publication Year
-   - Resource Type
-   - Description
-   - URL
-3. Generates a DataCite-compliant XML file following the kernel-4 schema
+The script uses simple regex patterns against the email’s HTML body to extract:
 
-## Notes
+- Requester name and email
+- URL
+- Creator(s)
+- Title
+- Publisher
+- Publication year
+- Resource type
+- Description/abstract
 
-- The DOI identifier in the generated XML is set to a placeholder (`10.XXXX/XXXXX`) and will be assigned by DataCite upon registration
-- Multiple creators can be separated by semicolons in the form
-- Personal names should be in "Last, First" format
-- Organizational names are automatically detected (no comma)
+It prints a readable “Extracted data” table to the terminal and then generates DataCite XML.
+
+## DataCite output details
+
+- The `<identifier>` is a placeholder (`10.XXXX/XXXXX`). DataCite assigns the real DOI when you register it.
+- Creator parsing:
+   - Multiple creators are separated by semicolons (`;`).
+   - Names containing a comma are treated as `Personal` (e.g., `Last, First`).
+   - Names without a comma are treated as `Organizational`.
+- The `<resourceType>` is currently emitted with `resourceTypeGeneral="Dataset"`.
+
+## ROR organization identifiers
+
+For organizational creators and the publisher, the script attempts to add a ROR ID:
+
+1. Checks a small local mapping (`ROR_MAPPINGS`) in `src/main.py`
+2. Falls back to the public ROR API (`https://api.ror.org/organizations`)
+
+If the lookup fails (offline, timeout, no matches), it continues without a ROR ID.
+
+## Repository layout
+
+- `src/main.py` — CLI entrypoint and conversion logic
+- `data/` — sample `.eml` / `.xml` files
+- `output/` — spare output folder (not currently used by the script)
+
+## License
+
+See `LICENSE`.
