@@ -198,7 +198,7 @@ def generate_datacite_xml(form_data, output_path):
         encoding='UTF-8'
     )
 
-    print(f"Generated DataCite XML: {output_path}")
+    print(f"\nGenerated DataCite XML:\n  {output_path}")
 
 
 def main():
@@ -217,18 +217,17 @@ def main():
     # Generate output path by replacing .eml extension with .xml
     output_path = Path(email_path).with_suffix('.xml')
 
-    # Parse email
-    print(f"Parsing email: {email_path}")
     form_data = parse_email_file(email_path)
 
     print("\nExtracted data:")
     for key, value in form_data.items():
-        print(f"  {key}: {value[:100]}..." if len(str(value)) > 100 else f"  {key}: {value}")
+        display_value = f"{value[:100]}..." if len(str(value)) > 100 else str(value)
+        # Use ANSI bold for keys and add visual separator
+        print(f"  \033[1m{key:20}\033[0m │ {display_value}")
 
     # Generate XML
     print(f"\nGenerating DataCite XML...")
     generate_datacite_xml(form_data, output_path)
-    print("Done!")
 
 
 if __name__ == "__main__":
