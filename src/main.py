@@ -73,11 +73,11 @@ def parse_email_file(email_path):
     patterns = {
         'name': r'<b><strong>Your name</strong>:\s*</b><br>(.*?)<br>',
         'email': r'<b><strong>Your email address</strong>:\s*</b><br>(.*?)<br>',
-        'url': r'<b><strong>URL</strong>.*?:\s*</b><br><a href="(.*?)"',
+        'url': r'<b><strong>URL</strong>.*?:\s*</b><br>\s*<a href="(.*?)"',
         'creators': r'<b><strong>Creator\(s\)</strong>.*?:\s*</b><br>(.*?)<br>',
         'title': r'<b><strong>Title</strong>.*?:\s*</b><br>(.*?)<br>',
         'publisher': r'<b><strong>Publisher</strong>.*?:\s*</b><br>(.*?)<br>',
-        'publication_year': r'<b><strong>Publication Year</strong>.*?:\s*</b><br>(\d{4})<br>',
+        'publication_year': r'<b><strong>Publication Year</strong>.*?:\s*</b><br>\s*(\d{4})<br>',
         'resource_type': r'<b><strong>Resource Type</strong>.*?:\s*</b><br>(.*?)<br>',
         'description': r'<b><strong>Description</strong>.*?:\s*</b><br>(.*?)<br><br>',
     }
@@ -221,7 +221,7 @@ def main():
 
     print("\nExtracted data:")
     for key, value in form_data.items():
-        display_value = f"{value[:100]}..." if len(str(value)) > 100 else str(value)
+        display_value = f"{value[:120]}..." if len(str(value)) > 120 else str(value)
         # Use ANSI bold for keys and add visual separator
         print(f"  \033[1m{key:20}\033[0m │ {display_value}")
 
