@@ -71,14 +71,16 @@ def parse_email_file(email_path):
 
     # Extract fields using regex patterns
     patterns = {
+        'submitted': r'<b>Submitted:</b>\s*(.*?)<br>',
+        'submission_id': r'<b>Submission ID:</b>\s*(.*?)<br>',
         'name': r'<b><strong>Your name</strong>:\s*</b><br>(.*?)<br>',
         'email': r'<b><strong>Your email address</strong>:\s*</b><br>(.*?)<br>',
+        'title': r'<b><strong>Title</strong>.*?:\s*</b><br>(.*?)<br>',
+        'resource_type': r'<b><strong>Resource Type</strong>.*?:\s*</b><br>(.*?)<br>',
         'url': r'<b><strong>URL</strong>.*?:\s*</b><br>\s*<a href="(.*?)"',
         'creators': r'<b><strong>Creator\(s\)</strong>.*?:\s*</b><br>(.*?)<br>',
-        'title': r'<b><strong>Title</strong>.*?:\s*</b><br>(.*?)<br>',
         'publisher': r'<b><strong>Publisher</strong>.*?:\s*</b><br>(.*?)<br>',
         'publication_year': r'<b><strong>Publication Year</strong>.*?:\s*</b><br>\s*(\d{4})<br>',
-        'resource_type': r'<b><strong>Resource Type</strong>.*?:\s*</b><br>(.*?)<br>',
         'description': r'<b><strong>Description</strong>.*?:\s*</b><br>(.*?)<br><br>',
     }
 
