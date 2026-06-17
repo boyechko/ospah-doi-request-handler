@@ -175,7 +175,8 @@ def generate_datacite_xml(form_data, output_path):
     pub_year.text = form_data.get('publication_year', '')
 
     # Resource Type
-    resource_type = etree.SubElement(root, "resourceType", resourceTypeGeneral="Dataset")
+    resource_type = etree.SubElement(root, "resourceType",
+                                     resourceTypeGeneral=form_data.get('resource_type', 'Dataset'))
 
     # Optional elements
     etree.SubElement(root, "sizes")
