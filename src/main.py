@@ -1,5 +1,7 @@
 import email
 import re
+import subprocess
+from datetime import datetime
 from pathlib import Path
 from lxml import etree
 from html import unescape
@@ -204,6 +206,62 @@ def generate_datacite_xml(form_data, output_path):
     print(f"\nGenerated DataCite XML:\n  {output_path}")
 
 
+def format_submission_date(submitted):
+    """Convert a 'Jun 15, 2026 08:22 AM' submitted value to M/D/YYYY."""
+    if not submitted:
+        return ""
+    for fmt in ("%b %d, %Y %I:%M %p", "%b %d, %Y"):
+        try:
+            dt = datetime.strptime(submitted.strip(), fmt)
+            return f"{dt.month}/{dt.day}/{dt.year}"
+        except ValueError:
+            continue
+    # Unrecognized format: fall back to the raw value
+    return submitted.strip()
+
+
+# Tracking-spreadsheet columns, in order. Each entry maps a column header to the
+# form_data key it comes from; None means the column isn't available from the
+# email (Owner, Status, DOI, etc. are filled in by hand later).
+TRACKING_COLUMNS = [
+    ("Submission ID", "submission_id"),
+    ("Requester", "name"),
+    ("Requester Email Address", "email"),
+    ("Title", "title"),
+    ("Resource Type", "resource_type"),
+    ("Owner", None),
+    ("Status", None),
+    ("Date of Submission", "submitted"),
+    ("Date of DOI Creation", None),
+    ("Landing Page URL", "url"),
+    ("DOI", None),
+    ("Notes", None),
+    ("Correspondence/Any relevenat reference", None),
+]
+
+
+def copy_tracking_row(form_data):
+    """Copy a tab-separated tracking row to the clipboard for pasting into the
+    DOI Requests Tracking spreadsheet."""
+    values = []
+    for header, key in TRACKING_COLUMNS:
+        if key is None:
+            values.append("")
+        elif key == "submitted":
+            values.append(format_submission_date(form_data.get("submitted", "")))
+        else:
+            values.append(form_data.get(key, ""))
+
+    row = "\t".join(values)
+
+    try:
+        subprocess.run(["pbcopy"], input=row, text=True, check=True)
+        print("\nCopied tracking row to clipboard (paste into the spreadsheet).")
+    except (FileNotFoundError, subprocess.CalledProcessError) as e:
+        print(f"\nWarning: Could not copy to clipboard: {e}")
+        print(f"Tracking row:\n{row}")
+
+
 def main():
     """Main function to process email and generate DataCite XML."""
     import sys
@@ -231,6 +289,9 @@ def main():
     # Generate XML
     print(f"\nGenerating DataCite XML...")
     generate_datacite_xml(form_data, output_path)
+
+    # Copy the tracking-spreadsheet row to the clipboard
+    copy_tracking_row(form_data)
 
 
 if __name__ == "__main__":
