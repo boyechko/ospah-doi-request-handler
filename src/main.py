@@ -262,19 +262,8 @@ def copy_tracking_row(form_data):
         print(f"Tracking row:\n{row}")
 
 
-def main():
-    """Main function to process email and generate DataCite XML."""
-    import sys
-
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <email_file.eml>")
-        print("\nExample:")
-        print("  python main.py data/email.eml")
-        print("\nOutput will be saved as <email_file>.xml")
-        sys.exit(1)
-
-    email_path = sys.argv[1]
-
+def process_email(email_path):
+    """Process a single .eml file and generate its DataCite XML."""
     # Generate output path by replacing .eml extension with .xml
     output_path = Path(email_path).with_suffix('.xml')
 
@@ -292,6 +281,39 @@ def main():
 
     # Copy the tracking-spreadsheet row to the clipboard
     copy_tracking_row(form_data)
+
+
+def main():
+    """Main function to process one or more emails and generate DataCite XML."""
+    import sys
+
+    if len(sys.argv) < 2:
+        print("Usage: python main.py <email_file.eml> [more.eml ...]")
+        print("\nExample:")
+        print("  python main.py request.eml")
+        print("  python main.py *.eml")
+        print("\nOutput will be saved as <email_file>.xml")
+        sys.exit(1)
+
+    # Process in alphanumeric order regardless of shell/glob ordering.
+    email_paths = sorted(sys.argv[1:])
+    total = len(email_paths)
+
+    for index, email_path in enumerate(email_paths, start=1):
+        print(f"\n\033[1m═══ [{index}/{total}] {email_path} \033[0m")
+        try:
+            process_email(email_path)
+        except Exception as e:
+            print(f"\n\033[31mError processing '{email_path}': {e}\033[0m")
+
+        # Pause after each file (except the last) so the tracking row can be
+        # pasted before the next file overwrites the clipboard.
+        if index < total:
+            try:
+                input("\nPress Enter for the next file (Ctrl-C to stop)... ")
+            except (EOFError, KeyboardInterrupt):
+                print("\nStopped.")
+                break
 
 
 if __name__ == "__main__":
