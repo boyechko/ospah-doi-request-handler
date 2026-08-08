@@ -1,4 +1,0 @@
-# XML generation
-lxml>=5.0.0
-# ROR API lookup
-requests>=2.31.0

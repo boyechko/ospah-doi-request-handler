@@ -4,23 +4,16 @@ Small command-line utility that parses `.eml` messages from a DOI request form (
 
 ## Requirements
 
-- Python 3.8+
-- Dependencies: `lxml`, `requests` (see `requirements.txt`)
+- [uv](https://docs.astral.sh/uv/) (`brew install uv`)
+- Python 3.11+ (uv installs the pinned version from `.python-version` automatically)
+- Dependencies: `lxml`, `requests` (declared in `pyproject.toml`, locked in `uv.lock`)
 
 ## Quick start
 
-Create a virtualenv and install dependencies:
+No setup step — the wrapper script syncs the environment on first run:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Run the converter:
-
-```bash
-python src/main.py path/to/request.eml
+./doi-request-handler path/to/request.eml
 ```
 
 This writes `path/to/request.xml` (same directory as the input `.eml`).
