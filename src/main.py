@@ -39,6 +39,28 @@ def lookup_ror(organization_name):
     return None
 
 
+ORCID_RE = re.compile(r'(?:https?://(?:www\.)?orcid\.org/)?(\d{4}-\d{4}-\d{4}-\d{3}[\dX])', re.IGNORECASE)
+
+
+def parse_creator(creator_text):
+    """Split one creator entry into (name, orcid).
+
+    The form asks for "Last name, First name, ORCiD"; the ORCiD may be a bare
+    identifier or an orcid.org URL. Returns the ORCiD as a bare identifier, or
+    None if the entry doesn't include one.
+    """
+    orcid = None
+    match = ORCID_RE.search(creator_text)
+    if match:
+        orcid = match.group(1).upper()
+        creator_text = ORCID_RE.sub('', creator_text)
+        # Drop the orcid.org URL remnant and the comma that introduced it
+        creator_text = re.sub(r'https?://\S*', '', creator_text)
+        creator_text = creator_text.strip().rstrip(',').strip()
+
+    return creator_text, orcid
+
+
 def clean_urldefense(url):
     """Strip URL defense wrapper from university email system."""
     if 'urldefense.com' in url:
@@ -130,7 +152,8 @@ def generate_datacite_xml(form_data, output_path):
     # Split by semicolon for multiple creators
     creator_list = [c.strip() for c in creator_text.split(';') if c.strip()]
 
-    for creator_name in creator_list:
+    for creator_entry in creator_list:
+        creator_name, orcid = parse_creator(creator_entry)
         creator = etree.SubElement(creators, "creator")
 
         # Check if it's an organizational name (no comma) or personal name
@@ -143,6 +166,18 @@ def generate_datacite_xml(form_data, output_path):
 
         creator_name_elem = etree.SubElement(creator, "creatorName", nameType=name_type)
         creator_name_elem.text = creator_name
+
+        if name_type == "Personal":
+            family, given = [part.strip() for part in creator_name.split(',', 1)]
+            etree.SubElement(creator, "givenName").text = given
+            etree.SubElement(creator, "familyName").text = family
+
+            if orcid:
+                name_identifier = etree.SubElement(creator, "nameIdentifier",
+                                                   nameIdentifierScheme="ORCID",
+                                                   schemeURI="https://orcid.org/")
+                name_identifier.text = orcid
+                print(f"  Added ORCiD for creator '{creator_name}': {orcid}")
 
         # Add ROR identifier for organizational creators
         if name_type == "Organizational":
