@@ -1,5 +1,6 @@
 import email
 import re
+import unicodedata
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -15,24 +16,35 @@ ROR_MAPPINGS = {
 }
 
 
+def normalize_org_name(name):
+    """Normalize an organization name for comparison (quotes, dashes, spacing)."""
+    name = unicodedata.normalize("NFKC", name)
+    name = name.translate(str.maketrans("\u2018\u2019\u201c\u201d\u2013\u2014", "''\"\"--"))
+    return " ".join(name.split()).casefold()
+
+
 def lookup_ror(organization_name):
     """Look up ROR identifier for an organization."""
     # Check local mappings first
     if organization_name in ROR_MAPPINGS:
         return ROR_MAPPINGS[organization_name]
 
-    # Try ROR API lookup
+    # Try ROR API lookup: quote the query so it is matched as a phrase, then
+    # accept only an organization whose name (or alias) matches exactly, since
+    # even a phrase query returns related organizations (e.g. "University of
+    # Washington" also matches "University of Washington Bothell").
     try:
         response = requests.get(
-            "https://api.ror.org/organizations",
-            params={"query": organization_name},
+            "https://api.ror.org/v2/organizations",
+            params={"query": f'"{organization_name}"'},
             timeout=5
         )
         if response.status_code == 200:
-            data = response.json()
-            if data.get("items") and len(data["items"]) > 0:
-                # Return the first match
-                return data["items"][0]["id"]
+            target = normalize_org_name(organization_name)
+            for item in response.json().get("items", []):
+                if any(normalize_org_name(name["value"]) == target
+                       for name in item.get("names", [])):
+                    return item["id"]
     except Exception as e:
         print(f"  Warning: Could not lookup ROR for '{organization_name}': {e}")
 
