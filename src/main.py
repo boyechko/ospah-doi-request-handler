@@ -96,7 +96,10 @@ FIELD_PATTERNS = {
     'email': r'<b><strong>Your email address</strong>:\s*</b><br>(.*?)<br>',
     'title': r'<b><strong>Title</strong>.*?:\s*</b><br>(.*?)<br>',
     'resource_type': r'<b><strong>Resource Type</strong>.*?:\s*</b><br>(.*?)<br>',
-    'url': r'<b><strong>URL</strong>.*?:\s*</b><br>\s*<a href="(.*?)"',
+    # Allow lead-in text before the link ("In our repository: <a href=..."),
+    # but never match past a tag, so a link-less URL field can't pick up a
+    # link from a later field
+    'url': r'<b><strong>URL</strong>[^<]*:\s*</b><br>[^<]*<a href="(.*?)"',
     'creators': r'<b><strong>Creator\(s\)</strong>.*?:\s*</b><br>(.*?)<br>',
     'publisher': r'<b><strong>Publisher</strong>.*?:\s*</b><br>(.*?)<br>',
     'publication_year': r'<b><strong>Publication Year</strong>.*?:\s*</b><br>\s*(\d{4})<br>',
