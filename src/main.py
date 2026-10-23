@@ -1,5 +1,8 @@
 import email
+import os
 import re
+import shlex
+import tempfile
 import unicodedata
 import subprocess
 from datetime import datetime
@@ -84,6 +87,23 @@ def clean_urldefense(url):
     return url
 
 
+# Form fields extracted from the request email's HTML body, keyed on the
+# form_data key each one populates.
+FIELD_PATTERNS = {
+    'submitted': r'<b>Submitted:</b>\s*(.*?)<br>',
+    'submission_id': r'<b>Submission ID:</b>\s*(.*?)<br>',
+    'name': r'<b><strong>Your name</strong>:\s*</b><br>(.*?)<br>',
+    'email': r'<b><strong>Your email address</strong>:\s*</b><br>(.*?)<br>',
+    'title': r'<b><strong>Title</strong>.*?:\s*</b><br>(.*?)<br>',
+    'resource_type': r'<b><strong>Resource Type</strong>.*?:\s*</b><br>(.*?)<br>',
+    'url': r'<b><strong>URL</strong>.*?:\s*</b><br>\s*<a href="(.*?)"',
+    'creators': r'<b><strong>Creator\(s\)</strong>.*?:\s*</b><br>(.*?)<br>',
+    'publisher': r'<b><strong>Publisher</strong>.*?:\s*</b><br>(.*?)<br>',
+    'publication_year': r'<b><strong>Publication Year</strong>.*?:\s*</b><br>\s*(\d{4})<br>',
+    'description': r'<b><strong>Description</strong>.*?:\s*</b><br>(.*?)<br><br>',
+}
+
+
 def parse_email_file(email_path):
     """Parse an .eml file and extract form data."""
     with open(email_path, 'r', encoding='utf-8') as f:
@@ -106,22 +126,7 @@ def parse_email_file(email_path):
     # Parse form fields from HTML
     form_data = {}
 
-    # Extract fields using regex patterns
-    patterns = {
-        'submitted': r'<b>Submitted:</b>\s*(.*?)<br>',
-        'submission_id': r'<b>Submission ID:</b>\s*(.*?)<br>',
-        'name': r'<b><strong>Your name</strong>:\s*</b><br>(.*?)<br>',
-        'email': r'<b><strong>Your email address</strong>:\s*</b><br>(.*?)<br>',
-        'title': r'<b><strong>Title</strong>.*?:\s*</b><br>(.*?)<br>',
-        'resource_type': r'<b><strong>Resource Type</strong>.*?:\s*</b><br>(.*?)<br>',
-        'url': r'<b><strong>URL</strong>.*?:\s*</b><br>\s*<a href="(.*?)"',
-        'creators': r'<b><strong>Creator\(s\)</strong>.*?:\s*</b><br>(.*?)<br>',
-        'publisher': r'<b><strong>Publisher</strong>.*?:\s*</b><br>(.*?)<br>',
-        'publication_year': r'<b><strong>Publication Year</strong>.*?:\s*</b><br>\s*(\d{4})<br>',
-        'description': r'<b><strong>Description</strong>.*?:\s*</b><br>(.*?)<br><br>',
-    }
-
-    for key, pattern in patterns.items():
+    for key, pattern in FIELD_PATTERNS.items():
         match = re.search(pattern, html_body, re.DOTALL | re.IGNORECASE)
         if match:
             value = match.group(1).strip()
@@ -310,18 +315,60 @@ def copy_tracking_row(form_data):
         print(f"Tracking row:\n{row}")
 
 
+def print_form_data(form_data):
+    """Print the form fields, truncating long values."""
+    print("\nExtracted data:")
+    for key, value in form_data.items():
+        display_value = f"{value[:120]}..." if len(str(value)) > 120 else str(value)
+        # Use ANSI bold for keys and add visual separator
+        print(f"  \033[1m{key:20}\033[0m │ {display_value}")
+
+
+def edit_form_data(form_data):
+    """Open the form fields in $EDITOR as 'key: value' lines and return the
+    edited values. Every known field is listed, so ones the parser missed can
+    be filled in; fields left blank are dropped."""
+    with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False, encoding='utf-8') as f:
+        f.write("# One field per line as 'key: value'. Blank values are dropped; lines starting with # are ignored.\n")
+        for key in FIELD_PATTERNS:
+            value = form_data.get(key, '').replace('\n', ' ')
+            f.write(f"{key}: {value}\n")
+        edit_path = f.name
+
+    try:
+        subprocess.run(shlex.split(os.environ.get('EDITOR', 'vi')) + [edit_path], check=True)
+        lines = Path(edit_path).read_text(encoding='utf-8').splitlines()
+    finally:
+        os.unlink(edit_path)
+
+    edited = {}
+    for line in lines:
+        if line.startswith('#') or ':' not in line:
+            continue
+        key, value = line.split(':', 1)
+        if value.strip():
+            edited[key.strip()] = value.strip()
+    return edited
+
+
 def process_email(email_path):
     """Process a single .eml file and generate its DataCite XML."""
     # Generate output path by replacing .eml extension with .xml
     output_path = Path(email_path).with_suffix('.xml')
 
     form_data = parse_email_file(email_path)
+    print_form_data(form_data)
 
-    print("\nExtracted data:")
-    for key, value in form_data.items():
-        display_value = f"{value[:120]}..." if len(str(value)) > 120 else str(value)
-        # Use ANSI bold for keys and add visual separator
-        print(f"  \033[1m{key:20}\033[0m │ {display_value}")
+    # Offer to correct the requester's answers until they look right
+    while True:
+        try:
+            answer = input("\nEdit fields before generating XML? [y/N] ")
+        except EOFError:
+            break
+        if not answer.strip().lower().startswith('y'):
+            break
+        form_data = edit_form_data(form_data)
+        print_form_data(form_data)
 
     # Generate XML
     print(f"\nGenerating DataCite XML...")

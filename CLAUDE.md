@@ -36,6 +36,8 @@ None — `uv run` creates `.venv/` and installs dependencies on first use. To ad
 
 3. **`lookup_ror(name)`** — checks the hard-coded `ROR_MAPPINGS` dict first, then falls back to the public ROR API (`https://api.ror.org/organizations`). Failures are non-fatal warnings.
 
+Between parsing and XML generation, `process_email()` offers to edit the fields: `edit_form_data()` writes every key in `FIELD_PATTERNS` to a temp file as `key: value` lines, opens it in `$EDITOR`, and reads it back (blank values are dropped). Edits happen on the raw form values, so creator/ORCiD parsing and ROR lookup still run on the corrected text.
+
 `clean_urldefense(url)` is a helper that strips URL-defense wrappers that university email systems inject around links.
 
 ## Key constraints
