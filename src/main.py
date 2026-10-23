@@ -12,6 +12,7 @@ import requests
 # Common organization ROR mappings
 ROR_MAPPINGS = {
     "Institute for Health Metrics and Evaluation": "https://ror.org/02684h094",
+    "National Alzheimer's Coordinating Center": "https://ror.org/03qm4p447",
     "University of Washington": "https://ror.org/00cvxb145",
 }
 
