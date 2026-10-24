@@ -139,6 +139,10 @@ def parse_email_file(email_path):
             # Clean URL defense wrapper
             if key == 'url':
                 value = clean_urldefense(value)
+            # Drop a sentence-ending period ("Smith, John."), but keep one
+            # after a trailing initial ("Smith, John Q.")
+            if key == 'creators':
+                value = re.sub(r'(?<=\w\w)\.$', '', value)
             form_data[key] = value
 
     return form_data
